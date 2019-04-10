@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">SudokuApp</string>
+    <string name="action_settings">Settings</string>
+    <string name="open_gallery">Set Photo</string>
+    <string name="SGD">Sudoku Grid Detection</string>
+
+
+</resources>
