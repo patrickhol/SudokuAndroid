@@ -11,4 +11,6 @@
         android:orderInCategory="100" app:showAsAction="never" />
     <item android:id="@+id/SGD" android:title="@string/SGD"
         android:orderInCategory="100" app:showAsAction="never" />
+    <item android:id="@+id/getNumberFromImageOCR" android:title="@string/OCR"
+        android:orderInCategory="100" app:showAsAction="never" />
 </menu>
