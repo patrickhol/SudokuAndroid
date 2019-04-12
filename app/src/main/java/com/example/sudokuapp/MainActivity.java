@@ -37,10 +37,9 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.utils.Converters;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -114,25 +113,34 @@ public class MainActivity extends AppCompatActivity {
         Bitmap bitmap = currentBitmap;
         Context context = getApplicationContext();
         TextRecognizer textRecognizer = new TextRecognizer.Builder(context).build();
-        if (!textRecognizer.isOperational()|| originalBitmap == null) {
+        if (!textRecognizer.isOperational() || originalBitmap == null) {
             Toast.makeText(context, "You need to load an image first! OR Cloud not get the Number", Toast.LENGTH_SHORT).show();
         } else {
             Frame frame = new Frame.Builder().setBitmap(bitmap).build();
-            SparseArray<TextBlock> items = textRecognizer.detect(frame);
+            final SparseArray<TextBlock> items = textRecognizer.detect(frame);
 
-            StringBuilder numberToShow = new StringBuilder();
-            for (int i = 0; i < items.size(); i++) {
-                TextBlock myItem = items.valueAt(i);
-                numberToShow.append(myItem.getValue());
-                numberToShow.append("");
-
-            }
+//            StringBuilder numberToShow = new StringBuilder();
+//            for (int i = 0; i < items.size(); i++) {
+//                TextBlock myItem = items.valueAt(i);
+//                numberToShow.append(myItem.getValue());
+//                numberToShow.append("");
+//
+//            }
+            text.post((Runnable) () -> {
+                StringBuilder numberToShow = new StringBuilder();
+                for (int i = 0; i < items.size(); i++) {
+                    TextBlock item = items.valueAt(i);
+                    numberToShow.append(item.getValue() + ",0,");
+                    numberToShow.append("\n");
+                }
+                text.setText(numberToShow.toString());
+            });
 
             // Display In the window
-            Toast.makeText(context, numberToShow.toString(), Toast.LENGTH_LONG).show();
+//            Toast.makeText(context, numberToShow.toString(), Toast.LENGTH_LONG).show();
 
             // Display in place of text
-            text.setText(numberToShow.toString());
+//            text.setText(numberToShow.toString());
         }
 
     }
@@ -167,7 +175,6 @@ public class MainActivity extends AppCompatActivity {
         imgView.setImageBitmap(currentBitmap);
 
     }
-
 
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
@@ -303,34 +310,136 @@ public class MainActivity extends AppCompatActivity {
         Point[] points = biggest.toArray();
 
         // TODO delete Log
-        Log.v(TAG, "width"+String.valueOf(displayMat.width()));
-        Log.v(TAG, "height"+String.valueOf(displayMat.height()));
+        Log.v(TAG, "width" + String.valueOf(displayMat.width()));
+        Log.v(TAG, "height" + String.valueOf(displayMat.height()));
         if (points.length >= 4) {
+
+
+            double xTopLeft = points[0].x;
+            double xBottomLeft = points[1].x;
+            double xTopRight = points[2].x;
+            double xBottomRight = points[3].x;
+            double yTopLeft = points[0].y;
+            double yBottomLeft = points[1].y;
+            double yBottomRight = points[2].y;
+            double yTopRight = points[3].y;
+
+            Point topLeftCorner = new Point(xTopLeft, yTopLeft);
+            Point bottomLeftCorner  = new Point(xBottomLeft, yBottomLeft);
+            Point bottomRightCorner = new Point(xBottomRight, yBottomRight);
+            Point topRightCorner = new Point(xTopRight, yTopRight);
+            // TODO delete draw
             // draw the outer box
 
-            Imgproc.circle(displayMat, new Point(points[0].x, points[0].y), 2,new Scalar(0, 255, 0),10);
-            Imgproc.circle(displayMat, new Point(points[1].x, points[1].y), 2,new Scalar(0, 255, 0),10);
-            Imgproc.circle(displayMat, new Point(points[2].x, points[2].y), 2,new Scalar(0, 255, 0),10);
-            Imgproc.circle(displayMat, new Point(points[3].x, points[3].y), 2,new Scalar(0, 255, 0),10);
+//
+//            Imgproc.circle(displayMat, topLeftCorner, 2, new Scalar(0, 255, 0), 10);
+//            Imgproc.circle(displayMat, topRightCorner, 2, new Scalar(0, 255, 0), 10);
+//            Imgproc.circle(displayMat, bottomRightCorner, 2, new Scalar(255, 255, 0), 10);
+//            Imgproc.circle(displayMat, bottomLeftCorner, 2, new Scalar(255, 255, 0), 10);
 
             // crop the image
-            Rect R = new Rect(new Point(points[0].x  , points[0].y  ), new Point(points[2].x  , points[2].y ));
-            if (displayMat.width() > 1 && displayMat.height() > 1) {
-                cropped = new Mat(displayMat, R);
+            // TODO delete Log
+            Log.v(TAG, "xTopLeft" + String.valueOf(xTopLeft));
+            Log.v(TAG, "yTopLeft" + String.valueOf(yTopLeft));
+            Log.v(TAG, "xTopRight  " + String.valueOf(xTopRight));
+            Log.v(TAG, "yTopRight  " + String.valueOf(yTopRight));
+            Log.v(TAG, "yBottomRight  " + String.valueOf(yBottomRight));
+            Log.v(TAG, "xBottomRight  " + String.valueOf(xBottomRight));
+            Log.v(TAG, "yBottomLeft   " + String.valueOf(yBottomLeft));
+            Log.v(TAG, "xBottomLeft   " + String.valueOf(xBottomLeft));
+            Log.v(TAG, " topLeftCorner  " + topLeftCorner);
+            Log.v(TAG, " topRightCorner  " + topRightCorner);
+            Log.v(TAG, " bottomRightCorner  " + bottomRightCorner);
+            Log.v(TAG, " bottomLeftCorner  " + bottomLeftCorner);
+
+
+            // TODO delete
+            Point punkt2 = new Point(points[2].x, ((points[2].y - points[0].y) / 9) + points[0].y);
+
+            Point cell00End = new Point(((xTopRight - xBottomRight) / 9) + xBottomLeft, ((yBottomRight - yTopRight) / 9) + yTopRight);
+            Point cell10End = new Point(((points[2].x - points[0].x) / 9) + (points[0].x * 2), ((points[2].y - points[0].y) / 9) + points[0].y);
+            Point cell90End = new Point(points[2].x, ((points[2].y - points[0].y) / 9) + points[0].y);
+            int howManyRows = 9;
+
+            Point cell91End = makeCroppedImageEnd(1, xBottomRight, yTopRight, yBottomRight);
+            Point cellStarts = bottomRightCorner ;
+            Point cellEnds = topLeftCorner;
+
+
+            Point start = new Point(xTopLeft,yTopLeft);
+            Point end = new Point(yTopRight,yBottomRight);
+
+            Point cell09Start = makeCroppedImageStart(2, xTopLeft, yBottomLeft, yTopLeft);
+            Point cell99End = makeCroppedImageEnd(9, xBottomRight, yTopRight, yBottomRight);
+
+            // TODO delete Crop
+//            Rect R = new Rect(start, cell99End);
+//            if (displayMat.width() > 1 && displayMat.height() > 1) {
+//                cropped = new Mat(displayMat, R);
+//            }
+
+            ////////  Transformation
+
+
+            double top = Math.sqrt(Math.pow(xTopRight - xTopLeft, 2) + Math.pow(yTopRight - yTopLeft, 2));
+            double right = Math.sqrt(Math.pow(xTopRight - xBottomRight, 2) + Math.pow(yBottomRight - yTopRight, 2));
+            double bottom = Math.sqrt(Math.pow(xBottomRight - xBottomLeft, 2) + Math.pow(yBottomRight-yBottomLeft , 2));
+            double left = Math.sqrt(Math.pow(xBottomLeft- xTopLeft, 2) + Math.pow(yBottomLeft - yTopLeft, 2));
+            // TODO delete Log
+            Log.v(TAG, " top  " + top);
+            Log.v(TAG, " right  " + right);
+            Log.v(TAG, " bottom  " + bottom);
+            Log.v(TAG, " left  " + left);
+
+            Mat quad = Mat.zeros(new Size(Math.max(top, bottom), Math.max(right, left)), CvType.CV_8UC3);
+
+            ArrayList<Point> result_pts = new ArrayList<Point>();
+            result_pts.add(new Point(0, 0));
+            result_pts.add(new Point(quad.cols(), 0));
+            result_pts.add(new Point(quad.cols(), quad.rows()));
+            result_pts.add(new Point(0, quad.rows()));
+
+            ArrayList<Point> corners = new ArrayList<Point>();
+
+            corners.add(points[0]);
+            corners.add(points[3]);
+            corners.add(points[2]);
+            corners.add(points[1]);
+
+            // TODO delete Log
+            for (Point po:corners
+            ) {
+                Log.v(TAG, " corners  " + po);;
+
             }
+
+            Mat cornerPts = Converters.vector_Point2f_to_Mat(corners);
+            Mat resultPts = Converters.vector_Point2f_to_Mat(result_pts);
+
+            Mat transformation = Imgproc.getPerspectiveTransform(cornerPts, resultPts);
+            Imgproc.warpPerspective(displayMat, quad, transformation, quad.size());
+
+            displayImage(quad);
+
         }
-        // TODO delete Log
-        Log.v(TAG, "cropped width "+String.valueOf(cropped.width()));
-        Log.v(TAG, "cropped height "+String.valueOf(cropped.height()));
 
-
-        displayImage(cropped);
 
     }
-    private void displayImage(Mat image)
-    {
+
+    // TODO delete Method or change
+    private Point makeCroppedImageEnd(int rows, double x, double y2, double y) {
+        Point cellEnd = new Point(x , ((y2 - y) / 9) * rows + y );
+        return cellEnd;
+    }
+    // TODO delete Method or change
+    private Point makeCroppedImageStart(int column, double x, double y, double y2) {
+        Point cellEnd = new Point( x, ((y2 - y) / 9) * column+y );
+        return cellEnd;
+    }
+
+    private void displayImage(Mat image) {
         // convert to bitmap:
-        Bitmap bitMap = Bitmap.createBitmap(image.cols(), image.rows(),Bitmap.Config.RGB_565);
+        Bitmap bitMap = Bitmap.createBitmap(image.cols(), image.rows(), Bitmap.Config.RGB_565);
         Utils.matToBitmap(image, bitMap);
 
         // find the imageview and draw it!
@@ -338,7 +447,6 @@ public class MainActivity extends AppCompatActivity {
         iv.setImageBitmap(bitMap);
         currentBitmap = bitMap;
     }
-
 
 
     private void onClickSudokuGridDetection(View view) {
