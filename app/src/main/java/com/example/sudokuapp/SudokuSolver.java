@@ -3,12 +3,11 @@ package com.example.sudokuapp;
 public class SudokuSolver {
 
 
-
     public int[][] getBoadrIntToSolve() {
         return boadrIntToSolve;
     }
 
-    private int[][] boadrIntToSolve;
+    private final int[][] boadrIntToSolve;
     public static final int SIZE_SUDOKU_BOARD = 9;
 
 
@@ -79,17 +78,18 @@ public class SudokuSolver {
         }
         return true;
     }
+
     @Override
     public String toString() {
-        String tableToString = "";
+        StringBuilder tableToString = new StringBuilder();
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
-                tableToString+= boadrIntToSolve[i][j]+" ";
+                tableToString.append(boadrIntToSolve[i][j]).append(" ");
             }
-            tableToString+= "\n";
+            tableToString.append("\n");
         }
 
-        return tableToString;
+        return tableToString.toString();
     }
 
 }
