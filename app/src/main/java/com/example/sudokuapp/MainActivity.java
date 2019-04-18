@@ -261,12 +261,13 @@ public class MainActivity extends AppCompatActivity {
 //        System.out.println("cutCell.width(): "+ cutCell.width()+ " cutCell.height(): "+cutCell.height());
 //        cutCell = debugCutOneCelll(cutCell, emptyWhitePlaceForOCR);
 //        System.out.println("ocrString: "+ocrString);
+//
 //        displayImage(cutCell);
 
         //////////  TODO only for debug cell
 
 
-        cutAllCell(tresh2, emptyWhitePlaceForOCR);
+        cutAndReadAllCell(tresh2, emptyWhitePlaceForOCR);
 
         String[][] sudokuGridMutation= new String[9][9];
         for (int i = 0; i < 9; i++) {
@@ -279,13 +280,13 @@ public class MainActivity extends AppCompatActivity {
 
 
 //        //TODO testing in the log
-//        for (int i = 0; i < 9; i++) {
-//            for (int j = 0; j < 9; j++) {
-//                System.out.printf("%5s ", sudokuGridMutation[j][i]);
-//            }
-//            System.out.println();
-//        }
-//
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                System.out.printf("%5s ", sudokuGridMutation[j][i]);
+            }
+            System.out.println();
+        }
+
         int[][] sudokuPrint = startSudokuSolver(sudokuGridMutation);
         addSolveToThePhoto(tresh2, sudokuPrint,sudokuGridMutation);
 
@@ -342,32 +343,68 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             }
-
         }
         scanner.close();
         return table;
     }
 
-    private void cutAllCell(Mat tresh2, Mat emptyWhitePlaceForOCR) {
+    private void cutAndReadAllCell(Mat tresh2, Mat emptyWhitePlaceForOCR) {
         Rect RR;
         Rect roi;
         Mat cutCell;
+        boolean read = false;
         for (int j = 0; j < 9; j++) {
             for (int i = 0; i < 9; i++) {
                 int x = i != 0 ? (tresh2.width() / 9) * i : 0;
                 int y = j != 0 ? (tresh2.height() / 9) * j : 0;
                 RR = new Rect(new Point(x, y), new Point((tresh2.width() / 9) * (i + 1), (tresh2.height() / 9) * (j + 1)));
                 cutCell = new Mat(tresh2, RR);
-                Imgproc.putText(emptyWhitePlaceForOCR, "tak", new Point(10, cutCell.height()-12), Core.FONT_HERSHEY_DUPLEX, 1, new Scalar(0));
-                roi = new Rect(70, 0, cutCell.width(), cutCell.height());
-                cutCell.copyTo(new Mat(emptyWhitePlaceForOCR, roi));
-               // TODO Cut
-                readOcrCell(emptyWhitePlaceForOCR);
+                double heightDiv=cutCell.height()/3;
+                double widthDiv= cutCell.width()/3;
+
+                for (int h = 0; h < cutCell.height(); h++) {
+                    for (int l = 0; l < cutCell.width(); l++) {
+                        double[] data = cutCell.get(h, l);
+                        if(h>heightDiv && l>widthDiv &&h<(heightDiv*2) && l<(widthDiv*2) && data[0]==0 ) {
+                            read=true;
+                            break;
+
+                        }
+                    }
+                }
+
+                if (read){
+
+                    Imgproc.putText(emptyWhitePlaceForOCR, "tak", new Point(10, cutCell.height()-12), Core.FONT_HERSHEY_DUPLEX, 1, new Scalar(0));
+                    roi = new Rect(70, 0, cutCell.width(), cutCell.height());
+                    cutCell.copyTo(new Mat(emptyWhitePlaceForOCR, roi));
+                    // TODO Cut
+                    readOcrCell(emptyWhitePlaceForOCR);
+                    read = false;
+                } else {
+                    ocrString += "tak \n";
+                }
+
             }
         }
     }
 
+    // TODO only for debug cut
     private Mat debugCutOneCelll(Mat cutCell, Mat emptyWhitePlaceForOCR) {
+        double heightDiv=cutCell.height()/3;
+        double widthDiv= cutCell.width()/3;
+             for (int i = 0; i < cutCell.height(); i++) {
+                 for (int j = 0; j < cutCell.width(); j++) {
+                     double[] data = cutCell.get(i, j);
+                     if(i>heightDiv && j>widthDiv &&i<(heightDiv*2) && j<(widthDiv*2) && data[0]==0 ) {
+
+                        // Action
+
+                     }
+                 }
+
+             }
+
 
                 Rect roi;
                 Imgproc.putText(emptyWhitePlaceForOCR, "tak", new Point(10, cutCell.height()-12), Core.FONT_HERSHEY_DUPLEX, 1, new Scalar(0));
@@ -380,7 +417,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
 
-
+    // TODO only for debug cut
     private Mat cutCellFromSudokuGrid(Mat cutCell, Mat tresh2,int stop) {
         Rect RR;
         int k=0;
