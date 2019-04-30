@@ -19,7 +19,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.vision.Frame;
@@ -50,29 +49,11 @@ import java.util.Scanner;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final String[][] sudokuGrid = {
-            {"0", "0", "0", "0", "0", "0", "0", "0", "0"},
-            {"0", "0", "0", "0", "0", "0", "0", "0", "0"},
-            {"0", "0", "0", "0", "0", "0", "0", "0", "0"},
-            {"0", "0", "0", "0", "0", "0", "0", "0", "0"},
-            {"0", "0", "0", "0", "0", "0", "0", "0", "0"},
-            {"0", "0", "0", "0", "0", "0", "0", "0", "0"},
-            {"0", "0", "0", "0", "0", "0", "0", "0", "0"},
-            {"0", "0", "0", "0", "0", "0", "0", "0", "0"},
-            {"0", "0", "0", "0", "0", "0", "0", "0", "0"}
-    };
-    private static final String TAG = "MyActivity";
-    private final String uriString = "content://media/internal/images/media";
+
+    private static final String uriString = "content://media/internal/images/media";
     private Bitmap currentBitmap;
     private Bitmap originalBitmap;
-    private String ocrString = " ";
     private Mat originalMat, currentMat;
-
-
-    //TODO OCR
-    ImageView image;
-    TextView text;
-
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -95,25 +76,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this, mLoaderCallback);
 
-
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(this::onClickLoadImage);
 
         FloatingActionButton fab1 = findViewById(R.id.fab1);
-
         fab1.setOnClickListener(this::onClickSudokuGridDetection);
 
         FloatingActionButton fab2 = findViewById(R.id.fab2);
-
         fab2.setOnClickListener(this::onClickSudokuSolve);
-
-
     }
 
 
@@ -132,14 +107,12 @@ public class MainActivity extends AppCompatActivity {
         else if (idActionBar == R.id.SGD) {
             SudokuGridDetection();
         }
-
         return super.onOptionsItemSelected(item);
     }
 
     private void loadImageToImageView() {
-        ImageView imgView = (ImageView) findViewById(R.id.image_view);
+        ImageView imgView = findViewById(R.id.image_view);
         imgView.setImageBitmap(currentBitmap);
-
     }
 
 
@@ -159,12 +132,7 @@ public class MainActivity extends AppCompatActivity {
             String picturePath = cursor.getString(columnIndex);
             cursor.close();
 
-
-            //To speed up loading of image
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = 2;
-
-            Bitmap temp = BitmapFactory.decodeFile(picturePath, options);
+            Bitmap temp = reduceImage(picturePath);
 
             int orientation = 0;
             try {
@@ -181,6 +149,12 @@ public class MainActivity extends AppCompatActivity {
             currentBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true);
             loadImageToImageView();
         }
+    }
+
+    private Bitmap reduceImage(String picturePath) {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = 2;
+        return BitmapFactory.decodeFile(picturePath, options);
     }
 
     private void convertBitmapToMat() {
@@ -237,215 +211,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
-
-    private void startSudokuSolverProcess() {
-
-        Mat grayMat = new Mat();
-        Mat blur1 = new Mat();
-
-        convertImageToGrayscale(grayMat, blur1, currentMat);
-        Mat thresh = new Mat();
-        Mat tresh2 = new Mat();
-        Imgproc.adaptiveThreshold(blur1, thresh, 255, 1, 1, 15, 15);
-        makeGridForOCR(thresh);
-        Imgproc.threshold(thresh, tresh2, 2, 255, Imgproc.THRESH_BINARY_INV);
-        Mat emptyWhitePlaceForOCR = new Mat(158, 158, CvType.CV_8UC1, new Scalar(255));
-
-        Rect RR;
-        Rect roi;
-        Mat cutCell = new Mat();
-        ocrString = " ";
-        //////////  TODO only for debug cell
-//        cutCell = cutCellFromSudokuGrid(cutCell, tresh2,29);
-//
-//        System.out.println("cutCell.width(): "+ cutCell.width()+ " cutCell.height(): "+cutCell.height());
-//        cutCell = debugCutOneCelll(cutCell, emptyWhitePlaceForOCR);
-//        System.out.println("ocrString: "+ocrString);
-//
-//        displayImage(cutCell);
-
-        //////////  TODO only for debug cell
-
-
-        cutAndReadAllCell(tresh2, emptyWhitePlaceForOCR);
-
-        String[][] sudokuGridMutation= new String[9][9];
-        for (int i = 0; i < 9; i++) {
-            for (int j = 0; j < 9; j++) {
-                sudokuGridMutation[j][i] =sudokuGrid[j][i];
-            }
-        }
-
-        sudokuGridMutation = readLineFindNumber(sudokuGridMutation);
-
-
-//        //TODO testing in the log
-        for (int i = 0; i < 9; i++) {
-            for (int j = 0; j < 9; j++) {
-                System.out.printf("%5s ", sudokuGridMutation[j][i]);
-            }
-            System.out.println();
-        }
-
-        int[][] sudokuPrint = startSudokuSolver(sudokuGridMutation);
-        addSolveToThePhoto(tresh2, sudokuPrint,sudokuGridMutation);
-
-        displayImage(currentMat);
-    }
-
-    private void convertImageToGrayscale(Mat grayMat, Mat blur1, Mat currentMat) {
-        Imgproc.cvtColor(currentMat, grayMat, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.GaussianBlur(grayMat, blur1, new Size(5, 5), 0);
-    }
-
-    private int[][] startSudokuSolver(String [][] table) {
-        SudokuSolver sudokuSolver = new SudokuSolver(table);
-        System.out.println("START SOLVING");
-        int[][] sudokuPrint = sudokuSolver.getBoadrIntToSolve();
-
-        if (sudokuSolver.solveSudokuRecursive()) {
-            System.out.println("SUDOKU SOLVED");
-            for (int i = 0; i < 9; i++) {
-                for (int j = 0; j < 9; j++) {
-                    System.out.printf("%5d ", sudokuPrint[j][i]);
-                }
-                System.out.println();
-            }
-        } else {
-            System.out.println("NOT SOLVED");
-        }
-        return sudokuPrint;
-    }
-
-    private void addSolveToThePhoto(Mat tresh2, int[][] sudokuPrint,String[][] table) {
-        for (int j = 0; j < 9; j++) {
-            for (int i = 0; i < 9; i++) {
-                if (table[i][j] == "0") {
-                    int x = i != 0 ? (tresh2.width() / 9) * i : 0;
-                    int y = j != 0 ? (tresh2.height() / 9) * j : 0;
-                    Imgproc.putText(currentMat, Integer.toString(sudokuPrint[i][j]), new Point(x + 15, y + 40), Core.FONT_HERSHEY_DUPLEX, 1, new Scalar(255, 0, 0));
-
-                }
-            }
-        }
-    }
-
-    private String[][] readLineFindNumber(String[][] table) {
-        Scanner scanner = new Scanner(ocrString);
-        for (int i = 0; i < 9; i++) {
-            for (int j = 0; j < 9; j++) {
-                String lineRead = scanner.nextLine();
-                String lineTransform = lineRead.replaceAll("\\D+", "").trim();
-                if (lineTransform.length() == 0) {
-                    continue;
-                } else {
-                    table[j][i] = lineTransform;
-
-                }
-            }
-        }
-        scanner.close();
-        return table;
-    }
-
-    private void cutAndReadAllCell(Mat tresh2, Mat emptyWhitePlaceForOCR) {
-        Rect RR;
-        Rect roi;
-        Mat cutCell;
-        boolean read = false;
-        for (int j = 0; j < 9; j++) {
-            for (int i = 0; i < 9; i++) {
-                int x = i != 0 ? (tresh2.width() / 9) * i : 0;
-                int y = j != 0 ? (tresh2.height() / 9) * j : 0;
-                RR = new Rect(new Point(x, y), new Point((tresh2.width() / 9) * (i + 1), (tresh2.height() / 9) * (j + 1)));
-                cutCell = new Mat(tresh2, RR);
-                double heightDiv=cutCell.height()/3;
-                double widthDiv= cutCell.width()/3;
-
-                for (int h = 0; h < cutCell.height(); h++) {
-                    for (int l = 0; l < cutCell.width(); l++) {
-                        double[] data = cutCell.get(h, l);
-                        if(h>heightDiv && l>widthDiv &&h<(heightDiv*2) && l<(widthDiv*2) && data[0]==0 ) {
-                            read=true;
-                            break;
-
-                        }
-                    }
-                }
-
-                if (read){
-
-                    Imgproc.putText(emptyWhitePlaceForOCR, "tak", new Point(10, cutCell.height()-12), Core.FONT_HERSHEY_DUPLEX, 1, new Scalar(0));
-                    roi = new Rect(70, 0, cutCell.width(), cutCell.height());
-                    cutCell.copyTo(new Mat(emptyWhitePlaceForOCR, roi));
-                    // TODO Cut
-                    readOcrCell(emptyWhitePlaceForOCR);
-                    read = false;
-                } else {
-                    ocrString += "tak \n";
-                }
-
-            }
-        }
-    }
-
-    // TODO only for debug cut
-    private Mat debugCutOneCelll(Mat cutCell, Mat emptyWhitePlaceForOCR) {
-        double heightDiv=cutCell.height()/3;
-        double widthDiv= cutCell.width()/3;
-             for (int i = 0; i < cutCell.height(); i++) {
-                 for (int j = 0; j < cutCell.width(); j++) {
-                     double[] data = cutCell.get(i, j);
-                     if(i>heightDiv && j>widthDiv &&i<(heightDiv*2) && j<(widthDiv*2) && data[0]==0 ) {
-
-                        // Action
-
-                     }
-                 }
-
-             }
-
-
-                Rect roi;
-                Imgproc.putText(emptyWhitePlaceForOCR, "tak", new Point(10, cutCell.height()-12), Core.FONT_HERSHEY_DUPLEX, 1, new Scalar(0));
-                roi = new Rect(70, 0, cutCell.width(), cutCell.height());
-                cutCell.copyTo(new Mat(emptyWhitePlaceForOCR, roi));
-                // TODO Cut
-                  debugReadOcrCell(emptyWhitePlaceForOCR);
-                  return emptyWhitePlaceForOCR;
-
-            }
-
-
-    // TODO only for debug cut
-    private Mat cutCellFromSudokuGrid(Mat cutCell, Mat tresh2,int stop) {
-        Rect RR;
-        int k=0;
-        for (int j = 0; j < 9; j++) {
-            for (int i = 0; i < 9; i++) {
-                int x = i != 0 ? (tresh2.width() / 9) * i : 0;
-                int y = j != 0 ? (tresh2.height() / 9) * j : 0;
-                RR = new Rect(new Point(x, y), new Point((tresh2.width() / 9) * (i + 1), (tresh2.height() / 9) * (j + 1)));
-                if(k== stop) {
-                    cutCell = new Mat(tresh2, RR);
-                }
-                k++;
-            }
-        }
-        return cutCell;
-    }
-
-    private Mat makeGridForOCR(Mat thresh) {
-        for (int i = 0; i <= 9; i++) {
-            Imgproc.line(thresh, new Point((thresh.width() / 9) * i, 0), new Point((thresh.width() / 9) * i, thresh.height()), new Scalar(0, 0, 0), 15);
-        }
-        for (int i = 0; i <= 9; i++) {
-            Imgproc.line(thresh, new Point(0, (thresh.height() / 9) * i), new Point(thresh.width(), (thresh.height() / 9) * i), new Scalar(0, 0, 0), 15);
-        }
-        return thresh;
-    }
-
-
     public void SudokuGridDetection() {
         Mat grayMat = new Mat();
         Mat blur1 = new Mat();
@@ -484,6 +249,141 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+
+    private void startSudokuSolverProcess() {
+        Mat grayMat = new Mat();
+        Mat blur1 = new Mat();
+        convertImageToGrayscale(grayMat, blur1, currentMat);
+        Mat thresh = new Mat();
+        Mat tresh2 = new Mat();
+        Imgproc.adaptiveThreshold(blur1, thresh, 255, 1, 1, 15, 15);
+        makeGridForOCR(thresh);
+        Imgproc.threshold(thresh, tresh2, 2, 255, Imgproc.THRESH_BINARY_INV);
+        Mat emptyWhitePlaceForOCR = new Mat(158, 158, CvType.CV_8UC1, new Scalar(255));
+        Sudoku ocrString = new Sudoku("");
+        cutAndReadAllCell(tresh2, emptyWhitePlaceForOCR, ocrString);
+        String[][] sudokuGridMutation = fillGridChar0();
+        sudokuGridMutation = readLineFindNumber(sudokuGridMutation, ocrString);
+        int[][] sudokuPrint = startSudokuSolver(sudokuGridMutation);
+        addSolveToThePhoto(tresh2, sudokuPrint, sudokuGridMutation);
+        displayImage(currentMat);
+    }
+
+    private String[][] fillGridChar0() {
+        String[][] sudokuGridMutation = new String[9][9];
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                sudokuGridMutation[j][i] = "0";
+            }
+        }
+        return sudokuGridMutation;
+    }
+
+    private void convertImageToGrayscale(Mat grayMat, Mat blur1, Mat currentMat) {
+        Imgproc.cvtColor(currentMat, grayMat, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.GaussianBlur(grayMat, blur1, new Size(5, 5), 0);
+    }
+
+    private int[][] startSudokuSolver(String[][] table) {
+        SudokuSolver sudokuSolver = new SudokuSolver(table);
+        int[][] sudokuPrint = sudokuSolver.getBoadrIntToSolve();
+        if (sudokuSolver.solveSudokuRecursive()) {
+            System.out.println("SUDOKU SOLVED");
+        } else {
+            System.out.println("NOT SOLVED");
+        }
+        return sudokuPrint;
+    }
+
+    private void addSolveToThePhoto(Mat tresh2, int[][] sudokuPrint, String[][] table) {
+        for (int j = 0; j < 9; j++) {
+            for (int i = 0; i < 9; i++) {
+                if (table[i][j] == "0") {
+                    int x = i != 0 ? (tresh2.width() / 9) * i : 0;
+                    int y = j != 0 ? (tresh2.height() / 9) * j : 0;
+                    Imgproc.putText(currentMat, Integer.toString(sudokuPrint[i][j]), new Point(x + 15, y + 40), Core.FONT_HERSHEY_DUPLEX, 1, new Scalar(255, 0, 0));
+
+                }
+            }
+        }
+    }
+
+    private String[][] readLineFindNumber(String[][] table, Sudoku ocrString) {
+        Scanner scanner = new Scanner(ocrString.getOcrString());
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                String lineRead = scanner.nextLine();
+                String lineTransform = lineRead.replaceAll("\\D+", "").trim();
+                if (lineTransform.length() == 0) {
+                    continue;
+                } else {
+                    table[j][i] = lineTransform;
+
+                }
+            }
+        }
+        scanner.close();
+        return table;
+    }
+
+    private void cutAndReadAllCell(Mat tresh2, Mat emptyWhitePlaceForOCR, Sudoku ocrString) {
+        Rect RR;
+        Rect roi;
+        Mat cutCell;
+        boolean read = false;
+        for (int j = 0; j < 9; j++) {
+            for (int i = 0; i < 9; i++) {
+                int x = i != 0 ? (tresh2.width() / 9) * i : 0;
+                int y = j != 0 ? (tresh2.height() / 9) * j : 0;
+                RR = new Rect(new Point(x, y), new Point((tresh2.width() / 9) * (i + 1), (tresh2.height() / 9) * (j + 1)));
+                cutCell = new Mat(tresh2, RR);
+                double heightDiv = cutCell.height() / 3;
+                double widthDiv = cutCell.width() / 3;
+
+                for (int h = 0; h < cutCell.height(); h++) {
+                    for (int l = 0; l < cutCell.width(); l++) {
+                        double[] data = cutCell.get(h, l);
+
+                        boolean blackPixelInside = h > heightDiv && l > widthDiv && h < (heightDiv * 2) && l < (widthDiv * 2) && data[0] == 0;
+                        if (blackPixelInside) {
+                            read = true;
+                            break;
+
+                        }
+                    }
+                }
+
+                if (read) {
+                    int heightCorrection = 12;
+                    Imgproc.putText(emptyWhitePlaceForOCR, "tak", new Point(10, cutCell.height() - heightCorrection), Core.FONT_HERSHEY_DUPLEX, 1, new Scalar(0));
+                    roi = new Rect(70, 0, cutCell.width(), cutCell.height());
+                    cutCell.copyTo(new Mat(emptyWhitePlaceForOCR, roi));
+                    // TODO Cut
+                    readOcrCell(emptyWhitePlaceForOCR, ocrString);
+                    read = false;
+                } else {
+                    // String for OCR
+                    ocrString.setOcrString(ocrString.getOcrString() + "tak \n");
+                }
+
+            }
+        }
+    }
+
+
+    private Mat makeGridForOCR(Mat thresh) {
+        for (int i = 0; i <= 9; i++) {
+            Imgproc.line(thresh, new Point((thresh.width() / 9) * i, 0), new Point((thresh.width() / 9) * i, thresh.height()), new Scalar(0, 0, 0), 15);
+        }
+        for (int i = 0; i <= 9; i++) {
+            Imgproc.line(thresh, new Point(0, (thresh.height() / 9) * i), new Point(thresh.width(), (thresh.height() / 9) * i), new Scalar(0, 0, 0), 15);
+        }
+        return thresh;
+    }
+
+
+
+
     private void perspectiveTransformation(Mat displayMat, Point[] points) {
         double xTopLeft = points[0].x;
         double xBottomLeft = points[1].x;
@@ -503,13 +403,13 @@ public class MainActivity extends AppCompatActivity {
 
         Mat quad = Mat.zeros(new Size(Math.max(top, bottom), Math.max(right, left)), CvType.CV_8UC3);
 
-        ArrayList<Point> result_pts = new ArrayList<Point>();
+        ArrayList<Point> result_pts = new ArrayList<>();
         result_pts.add(new Point(0, 0));
         result_pts.add(new Point(quad.cols(), 0));
         result_pts.add(new Point(quad.cols(), quad.rows()));
         result_pts.add(new Point(0, quad.rows()));
 
-        ArrayList<Point> corners = new ArrayList<Point>();
+        ArrayList<Point> corners = new ArrayList<>();
 
         corners.add(new Point(points[0].x, points[0].y));
         corners.add(new Point(points[3].x, points[3].y));
@@ -527,7 +427,7 @@ public class MainActivity extends AppCompatActivity {
         displayImage(quad);
     }
 
-    private void readOcrCell(Mat col) {
+    private void readOcrCell(Mat col, Sudoku ocrString) {
         Bitmap bitMap = convertToBitmap(col, Bitmap.Config.RGB_565);
         Frame frame = new Frame.Builder().setBitmap(bitMap).build();
         TextRecognizer textRecognizer = new TextRecognizer.Builder(this).build();
@@ -536,52 +436,18 @@ public class MainActivity extends AppCompatActivity {
         List<Text> texto = new ArrayList<>();
         for (int i = 0; i < textblock.size(); i++) {
             tb = textblock.get(textblock.keyAt(i));
-//            Log.e("TEXT", tb.toString() + "");
             texto.addAll(tb.getComponents());
         }
         for (Text t : texto) {
             for (Text t2 : t.getComponents()) {
-                ocrString += t2.getValue() + " ";
+                ocrString.setOcrString(ocrString.getOcrString() + t2.getValue() + " ");
 
             }
 
         }
-        ocrString += "\n";
+        ocrString.setOcrString(ocrString.getOcrString() + "\n");
     }
 
-    private void debugReadOcrCell(Mat col) {
-        Bitmap bitMap = convertToBitmap(col, Bitmap.Config.RGB_565);
-        Frame frame = new Frame.Builder().setBitmap(bitMap).build();
-        TextRecognizer textRecognizer = new TextRecognizer.Builder(this).build();
-        SparseArray<TextBlock> textblock = textRecognizer.detect(frame);
-        TextBlock tb = null;
-        List<Text> texto = new ArrayList<>();
-        for (int i = 0; i < textblock.size(); i++) {
-            tb = textblock.get(textblock.keyAt(i));
-//            Log.e("TEXT", tb.toString() + "");
-            texto.addAll(tb.getComponents());
-        }
-        for (Text t : texto) {
-            for (Text t2 : t.getComponents()) {
-                ocrString += t2.getValue() + " ";
-
-            }
-
-        }
-        ocrString += "\n";
-    }
-
-    // TODO delete Method or change
-    private Point makeCroppedImageEnd(int rows, double x, double y2, double y) {
-        Point cellEnd = new Point(x, ((y2 - y) / 9) * rows + y);
-        return cellEnd;
-    }
-
-    // TODO delete Method or change
-    private Point makeCroppedImageStart(int column, double x, double y, double y2) {
-        Point cellEnd = new Point(x, ((y2 - y) / 9) * column + y);
-        return cellEnd;
-    }
 
     private void displayImage(Mat image) {
         Bitmap bitMap = convertToBitmap(image, Bitmap.Config.ARGB_8888);
@@ -589,7 +455,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void findTheImageAndDraw(Bitmap bitMap) {
-        ImageView iv = (ImageView) findViewById(R.id.image_view);
+        ImageView iv = findViewById(R.id.image_view);
         iv.setImageBitmap(bitMap);
         currentBitmap = bitMap;
     }

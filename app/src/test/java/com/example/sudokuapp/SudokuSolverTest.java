@@ -1,11 +1,14 @@
 package com.example.sudokuapp;
 
 import org.junit.Assert;
-import org.junit.Test;
-
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
 
 public class SudokuSolverTest {
+
+
+
+
 
     private final String[][] sudokuInputGrid = {
             {"0", "3", "0", "0", "8", "9", "6", "0", "1"},
@@ -19,7 +22,7 @@ public class SudokuSolverTest {
             {"3", "0", "5", "8", "4", "0", "0", "1", "0"}
 
     };
-    private int[][] sudokuExpectedOutputGrid = {
+    private final int[][] sudokuExpectedOutputGrid = {
             {5, 3, 2, 4, 8, 9, 6, 7, 1},
             {7, 4, 8, 3, 6, 1, 5, 2, 9},
             {1, 9, 6, 2, 7, 5, 3, 4, 8},
@@ -31,7 +34,7 @@ public class SudokuSolverTest {
             {3, 2, 5, 8, 4, 7, 9, 1, 6},
 
     };
-    private int[][] sudokuBadOutputGrid = {
+    private final int[][] sudokuBadOutputGrid = {
             {5, 0, 2, 4, 8, 9, 6, 7, 1},
             {7, 4, 8, 3, 6, 1, 5, 2, 9},
             {1, 9, 6, 2, 7, 5, 3, 4, 8},
@@ -45,7 +48,8 @@ public class SudokuSolverTest {
     };
 
 
-    @Test
+
+    @RepeatedTest(100)
     public void givenNewSudokuInputWhenSolveSudokuRecursiveThenArraysEqualsTrue() {
         SudokuSolver newSudokuTab = new SudokuSolver(sudokuInputGrid);
         newSudokuTab.solveSudokuRecursive();

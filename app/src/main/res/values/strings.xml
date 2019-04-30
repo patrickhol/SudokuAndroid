@@ -4,9 +4,7 @@
     <string name="open_gallery">Set Photo</string>
     <string name="SGD">Sudoku Grid Detection</string>
     <string name="OCR">Number OCR</string>
-    <string name="image">Image</string>
-    <string name="textview">TextView</string>
-    <string name="button">OCR</string>
+
 
 
 </resources>
