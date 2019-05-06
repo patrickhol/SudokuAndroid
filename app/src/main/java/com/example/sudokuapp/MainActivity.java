@@ -33,8 +33,6 @@ import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
@@ -211,39 +209,18 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+
     public void SudokuGridDetection() {
-        Mat grayMat = new Mat();
-        Mat blur1 = new Mat();
+        GridDetection gridDetection = new GridDetection();
+        gridDetection.convertImageToGrayscale(gridDetection.getGrayMat(), gridDetection.getBlur1(), originalMat);
+        gridDetection.adaptiveThreshold();
+        gridDetection.findContours();
+        gridDetection.LoopContours();
+        gridDetection.setDisplayMat(originalMat);
+        gridDetection.setPoints(gridDetection.getBiggest().toArray());
 
-        convertImageToGrayscale(grayMat, blur1, originalMat);
-
-        Mat thresh = new Mat();
-        Imgproc.adaptiveThreshold(blur1, thresh, 255, 1, 1, 11, 2);
-
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hier = new Mat();
-        Imgproc.findContours(thresh, contours, hier, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        MatOfPoint2f biggest = new MatOfPoint2f();
-        double maxArea = 0;
-        for (MatOfPoint one : contours) {
-            double area = Imgproc.contourArea(one);
-            if (area > 100) {
-                MatOfPoint2f curve = new MatOfPoint2f(one.toArray());
-                double peri = Imgproc.arcLength(curve, true);
-                MatOfPoint2f approx = new MatOfPoint2f();
-                Imgproc.approxPolyDP(curve, approx, 0.02 * peri, true);
-                if (area > maxArea && approx.total() == 4) {
-                    biggest = approx;
-                    maxArea = area;
-                }
-            }
-        }
-        Mat displayMat = originalMat;
-        Point[] points = biggest.toArray();
-
-        if (points.length >= 4) {
-            perspectiveTransformation(displayMat, points);
+        if (gridDetection.getPoints().length >= 4) {
+            perspectiveTransformation(gridDetection.getDisplayMat(), gridDetection.getPoints());
         }
 
 
@@ -380,8 +357,6 @@ public class MainActivity extends AppCompatActivity {
         }
         return thresh;
     }
-
-
 
 
     private void perspectiveTransformation(Mat displayMat, Point[] points) {
